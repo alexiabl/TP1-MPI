@@ -6,7 +6,8 @@
 
 int main(int argc, char** argv) 
 {
-	
+	double tiempoTotalInicia;
+	double tiempoTotalFinal;
     srand(time(NULL)); 
     int n;				/*N  */
 	int  p;            /*  Numero de procesos que corren */
@@ -14,6 +15,9 @@ int main(int argc, char** argv)
     int i;
 	int j;
 	int y;
+	
+	double tiempoEjecucionInicia;
+	double tiempoEjecucionFinal;
 
 	
 	int *M;
@@ -27,10 +31,10 @@ int main(int argc, char** argv)
 	int *MyQ;//
 	int *MyP;
 	int *P;
-	int *tp;
-	int *MyTp;
+	int tp;
+	int MyTp;
 
-	
+	tiempoTotalInicia = MPI_Wtime(); 
 	MPI_Init(&argc, &argv); 
 	MPI_Comm_size(MPI_COMM_WORLD, &p); 
     MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
@@ -40,7 +44,8 @@ int main(int argc, char** argv)
 	  //Generacion de Matriz M y Vector V
       printf("Ingrese la dimension de la matriz: \n");
       scanf("%d", &n);
-      printf("La dimension ingresada es de %d x %d \n",n,n);
+	  tiempoEjecucionInicia = MPI_Wtime(); 
+      printf("n es %d\n",n);
       sendcounts=malloc(p*sizeof(int));
 	displs=malloc(p*sizeof(int));
 	B= malloc(n * n * sizeof(int));
@@ -91,24 +96,6 @@ int main(int argc, char** argv)
 			}
 			V[i] = rand()%6;
 		 }
-
-      //Desplegar Matriz y Vector originales
-      printf("La Matriz M original es: \n");
-      	for (i=0;i<n;i++)
-		 {
-			 for (j=0;j<n;j++)
-			 {
-				//printf("%d",M[i * ncolumns + j]); 
-				 printf(" %d ",M[i * n + j]); 
-			 }
-			  printf("\n");
-		 }
-         
-      printf("El Vector V original es: \n");
-      for (i=0;i<n;i++){
-        printf(" %d ", V[i]);
-      }
-      printf("\n");
    }
 
    MPI_Barrier(MPI_COMM_WORLD);
@@ -121,8 +108,6 @@ int main(int argc, char** argv)
      MyQ=malloc(n * sizeof(int));
 	 MyP=malloc(n * sizeof(int));
 	MyTp =0;
-
-
 
 	 if (proc_id > 0){
 		 V= malloc(n *  sizeof(int));	
@@ -161,16 +146,6 @@ for (i=k;i<h;i++)
 	}
 }
 MPI_Gather(MyQ, (n/p), MPI_INT, Q, (n/p), MPI_INT, 0, MPI_COMM_WORLD);
-MPI_Barrier(MPI_COMM_WORLD);
-
-
-if (proc_id == 0){
-printf("El resultado de Q es: \n");
-for (i=0;i<n;i++){
-	printf(" %d ",Q[i]);
-}
-printf("\n");
-}
 
 //Calculo de P[i]
 
@@ -191,20 +166,7 @@ for (i=k;i<h;i++) //filas
 
 MPI_Reduce(MyP,P,((n*n)/p),MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
 
-MPI_Barrier(MPI_COMM_WORLD);
-
 MPI_Reduce(&MyTp,&tp,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
-MPI_Barrier(MPI_COMM_WORLD);
-
-
-if (proc_id == 0){
-	printf("El resultado de P es: \n");
-	for (i=0;i<n;i++){
-		printf(" %d ",P[i]);
-	}
-	printf("\n TP es = %d \n",tp);
-}
-
 
 ///Calculo cruz de Matriz B
 	for (i=k;i<h;i++)
@@ -239,29 +201,112 @@ if (proc_id == 0){
 	MPI_Gather(BLocal, ((n*n)/p), MPI_INT, B, ((n*n)/p), MPI_INT, 0, MPI_COMM_WORLD);
 
  MPI_Barrier(MPI_COMM_WORLD);
-   ///////////////////////////////acá imprimimos B
-   if(proc_id==0)
-   {
-		printf("resultado de B: \n");
 
-		for (i=0;i<n;i++)
-		 {
-			 for (j=0;j<n;j++)
-			{
-				 printf(" %d ",B[i * n + j]);
-			}
-			printf("\n");
-		 }
-   }
 
 //TODO
-	// tp 
    // free toda la memoria asignada
-   // display los resultados finales ordenados
+   // tiempo
+ MPI_Finalize(); 
 
+if (proc_id == 0){
+	if (n < 100){
+		printf("La Matriz M es: \n");
+			for (i=0;i<n;i++)
+			{
+				for (j=0;j<n;j++)
+				{
+					//printf("%d",M[i * ncolumns + j]); 
+					printf(" %d ",M[i * n + j]); 
+				}
+				printf("\n");
+			}
+		printf("\n");
 
-   //reduce de myP en P
-  MPI_Finalize();   /* Se termina el ambiente MPI */
+		printf("El Vector V es: \n");
+		for (i=0;i<n;i++){
+			printf(" %d ", V[i]);
+		}
+		printf("\n\n");
+
+		printf("El resultado de Q es: \n");
+		for (i=0;i<n;i++){
+			printf(" %d ",Q[i]);
+		}
+		printf("\n\n");
+
+		printf("El resultado de P es: \n");
+		for (i=0;i<n;i++){
+			printf(" %d ",P[i]);
+		}
+		printf("\n\n");
+		printf("TP es = %d",tp);
+		printf("\n\n");
+		printf("El resultado de B: \n");
+
+			for (i=0;i<n;i++)
+			{
+				for (j=0;j<n;j++)
+				{
+					printf(" %d ",B[i * n + j]);
+				}
+				printf("\n");
+			}
+	}
+	else{ //n > 100 guardar en un archivo
+		FILE *fp;
+	fp = fopen("/resultados.txt", "w+");
+	fprintf(fp,"La Matriz M es: \n");
+			for (i=0;i<n;i++)
+			{
+				for (j=0;j<n;j++)
+				{
+					//printf("%d",M[i * ncolumns + j]); 
+					fprintf(fp," %d ",M[i * n + j]); 
+				}
+				fprintf(fp,"\n");
+			}
+		fprintf(fp,"\n");
+
+		fprintf(fp,"El Vector V es: \n");
+		for (i=0;i<n;i++){
+			fprintf(fp," %d ", V[i]);
+		}
+		fprintf(fp,"\n\n");
+
+		fprintf(fp,"El resultado de Q es: \n");
+		for (i=0;i<n;i++){
+			fprintf(fp," %d ",Q[i]);
+		}
+		fprintf(fp,"\n\n");
+
+		fprintf(fp,"El resultado de P es: \n");
+		for (i=0;i<n;i++){
+			fprintf(fp," %d ",P[i]);
+		}
+		fprintf(fp,"\n\n");
+		fprintf(fp,"TP es = %d",tp);
+		fprintf(fp,"\n\n");
+		fprintf(fp,"El resultado de B: \n");
+
+			for (i=0;i<n;i++)
+			{
+				for (j=0;j<n;j++)
+				{
+					fprintf(fp," %d ",B[i * n + j]);
+				}
+				fprintf(fp,"\n");
+			}
+	fclose(fp);
+	}
+	tiempoEjecucionFinal = MPI_Wtime(); 
+tiempoTotalFinal = MPI_Wtime(); 
+printf("El tiempo total que tardo el programa es de %f \n", tiempoTotalInicia-tiempoTotalFinal);
+printf("El tiempo que tardo el programa desde que ingreso los valores es de %f \n", tiempoEjecucionInicia-tiempoEjecucionFinal);
+}
+
+   /* Se termina el ambiente MPI */
+
+  
     return (EXIT_SUCCESS);
 }
 
