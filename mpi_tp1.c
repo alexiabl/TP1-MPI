@@ -140,7 +140,7 @@ for (i=k;i<h;i++)
 
 	if(proc_id>0)
 {
-	for(i=0;i<(n*n)/p;i++)
+	for(i=0;i<n;i++)
 	{
 		MyQ[i]=MyQ[i+1];
 	}
